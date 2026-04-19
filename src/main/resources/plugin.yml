@@ -7,7 +7,7 @@ description: Cinematic Demon Slayer inspired breathing PvP system.
 commands:
   breathing:
     description: Breathing control command.
-    usage: /breathing <select|withdraw|info|abilities|reload|altar|katana|core>
+    usage: /breathing <select|withdraw|info|abilities|reload|altar|katana|core|spin>
     aliases: [db]
 permissions:
   demonbreathing.admin:

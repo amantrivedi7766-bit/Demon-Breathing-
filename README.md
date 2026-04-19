@@ -1,13 +1,19 @@
 # Demon Breathing Plugin (Paper/Spigot 1.21.1 - 1.21.4)
 
-## Core Features
-- Universal combat control: `Shift hold -> release -> left/right click`.
-- Charge/status shown in action bar style HUD.
-- Breathing-specific particles, cinematic dragon join sequence, and style icon symbols.
-- Style-locked katanas with unique CustomModelData.
-- Breathing cores can be absorbed/withdrawn.
-- Breathing bounty survival system (5 minutes) with one-time defensive quake shield.
-- Altar ritual forging with dynamic GUI, recipe board above altar, 10-second ritual, global coordinate bossbar.
+## Full System Overview
+This plugin provides:
+- Universal breathing combat controls (`Shift hold -> release -> click`).
+- 7 breathing styles with style-locked katanas.
+- First-join cinematic spin/dragon sequence.
+- Breathing core absorb/withdraw flow.
+- Kill-triggered bounty survival event.
+- 5-minute altar ritual forging with global coordinate bossbar and dragon-snake particles.
+
+## Core Rules
+1. **Katana abilities only work if player has absorbed matching breathing**.
+2. **Core pickup does NOT auto-start bounty**.
+3. **Bounty starts when a killer claims breathing from a killed player**.
+4. If bounty carrier dies, killer receives breathing core directly (no extra bounty on killer).
 
 ## Commands
 - `/breathing info`
@@ -17,6 +23,7 @@
 - `/breathing altar`
 - `/breathing katana <style>` (admin)
 - `/breathing core <style>` (admin)
+- `/breathing spin <player>` (admin)
 
 ## CustomModelData Map
 ### Breathing Cores
@@ -40,8 +47,9 @@
 ### Altar
 - Breathing Altar: `34001`
 
-## Symbol Codewords (Resource Pack Icon Hook)
-Plugin sends action-bar symbols via `player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§f<symbol>"));`
+## Overlay Icon Codewords (resource pack hook)
+These are sent in action bar using:
+`player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§f<symbol>"));`
 
 - Thunder: `§f\uE001`
 - Water: `§f\uE002`
@@ -51,13 +59,19 @@ Plugin sends action-bar symbols via `player.spigot().sendMessage(ChatMessageType
 - Flame: `§f\uE006`
 - Mist: `§f\uE007`
 
-## Altar Ritual Flow
-1. Place Breathing Altar.
-2. Right-click -> GUI title: **All Katanas**.
-3. Click desired katana -> recipe board appears above altar (visible to all).
-4. Right-click altar again with ingredients.
-5. 10s ritual starts with dragon particles + rotating katana + global coords bossbar.
-6. Ritual ends -> platform removed -> katana drops -> global obtain announcement in English.
+## Altar Ritual Details
+1. Place altar and open **All Katanas** GUI.
+2. Click katana -> recipe board appears above altar.
+3. Right-click altar with ingredients.
+4. Ritual starts for **5 minutes**:
+   - Bossbar shows coordinates + crafter + timer.
+   - Katana rotates above altar.
+   - Dragon-breath snake particles rotate around ritual zone.
+   - Ritual platform is active.
+5. On completion:
+   - Katana drops,
+   - Platform is removed,
+   - Global English announcement is broadcast.
 
 ## Build
 ```bash

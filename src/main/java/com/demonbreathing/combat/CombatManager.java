@@ -207,20 +207,7 @@ public final class CombatManager implements Listener {
 
     @EventHandler
     public void onPickup(EntityPickupItemEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        Item itemEntity = event.getItem();
-        if (!isBreathingCore(itemEntity.getItemStack())) return;
-        event.setCancelled(true);
-
-        BreathingStyle core = coreStyle(itemEntity.getItemStack());
-        itemEntity.remove();
-        if (core == null) return;
-        if (getAssignedStyle(player) != null) {
-            player.sendMessage(Component.text("You already have a breathing.", NamedTextColor.RED));
-            player.getWorld().dropItemNaturally(player.getLocation(), createBreathingCore(core));
-            return;
-        }
-        startBounty(player, core);
+        // Core pickup is normal now. Bounty is not triggered by pickup.
     }
 
     @EventHandler
@@ -246,16 +233,29 @@ public final class CombatManager implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         Player dead = event.getEntity();
-        BountyState bounty = bountyStates.remove(dead.getUniqueId());
-        if (bounty == null) return;
-        bounty.orbit.remove();
-
         Player killer = dead.getKiller();
-        if (killer != null) {
-            setStyle(killer, bounty.style);
-            Bukkit.broadcastMessage("§6[Breathing Bounty] §f" + killer.getName() + " has claimed " + bounty.style.displayName() + " Breathing!");
-        } else {
-            dead.getWorld().dropItemNaturally(dead.getLocation(), createBreathingCore(bounty.style));
+
+        BountyState bounty = bountyStates.remove(dead.getUniqueId());
+        if (bounty != null) {
+            bounty.orbit.remove();
+            if (killer != null) {
+                killer.getInventory().addItem(createBreathingCore(bounty.style));
+                Bukkit.broadcastMessage("§6[Breathing Bounty] §f" + killer.getName() + " defeated " + dead.getName() + " and claimed " + bounty.style.displayName() + " Core!");
+            } else {
+                dead.getWorld().dropItemNaturally(dead.getLocation(), createBreathingCore(bounty.style));
+            }
+            return;
+        }
+
+        BreathingStyle deadStyle = getAssignedStyle(dead);
+        if (deadStyle != null && killer != null) {
+            dead.getPersistentDataContainer().remove(assignedStyleKey);
+            if (getAssignedStyle(killer) == null) {
+                startBounty(killer, deadStyle);
+                Bukkit.broadcastMessage("§c[Bounty] §f" + killer.getName() + " claimed " + deadStyle.displayName() + " from " + dead.getName() + " and entered 5-minute bounty survival!");
+            } else {
+                killer.getInventory().addItem(createBreathingCore(deadStyle));
+            }
         }
     }
 
@@ -350,6 +350,10 @@ public final class CombatManager implements Listener {
     private void gustBurst(Player player, BreathingStyle style) {
         player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0, 1, 0), 40, 0.5, 0.2, 0.5, 0.03);
         player.getWorld().spawnParticle(style.chargeParticle(), player.getLocation().add(0, 1, 0), 35, 0.6, 0.4, 0.6, 0.02);
+    }
+
+    public void triggerSpin(Player target) {
+        runFirstJoinCinematic(target);
     }
 
     private void runFirstJoinCinematic(Player player) {

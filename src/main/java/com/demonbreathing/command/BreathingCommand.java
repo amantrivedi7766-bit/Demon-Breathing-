@@ -57,6 +57,14 @@ public final class BreathingCommand implements CommandExecutor, TabCompleter {
                 if (args.length < 2) { p.sendMessage(Component.text("/breathing core <style>", NamedTextColor.RED)); return true; }
                 BreathingStyle.parse(args[1]).ifPresent(style -> p.getInventory().addItem(combat.createBreathingCore(style)));
             }
+            case "spin" -> {
+                if (!p.hasPermission("demonbreathing.admin")) { p.sendMessage(Component.text("No permission", NamedTextColor.RED)); return true; }
+                if (args.length < 2) { p.sendMessage(Component.text("/breathing spin <player>", NamedTextColor.RED)); return true; }
+                Player target = p.getServer().getPlayerExact(args[1]);
+                if (target == null) { p.sendMessage(Component.text("Player not online", NamedTextColor.RED)); return true; }
+                combat.triggerSpin(target);
+                p.sendMessage(Component.text("Spin cinematic triggered for " + target.getName(), NamedTextColor.GREEN));
+            }
             default -> help(p);
         }
         return true;
@@ -70,12 +78,13 @@ public final class BreathingCommand implements CommandExecutor, TabCompleter {
         p.sendMessage(Component.text("/breathing altar", NamedTextColor.YELLOW));
         p.sendMessage(Component.text("/breathing katana <style> (admin)", NamedTextColor.YELLOW));
         p.sendMessage(Component.text("/breathing core <style> (admin)", NamedTextColor.YELLOW));
+        p.sendMessage(Component.text("/breathing spin <player> (admin)", NamedTextColor.YELLOW));
         return true;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("select", "withdraw", "info", "abilities", "reload", "altar", "katana", "core"), args[0]);
+        if (args.length == 1) return filter(List.of("select", "withdraw", "info", "abilities", "reload", "altar", "katana", "core", "spin"), args[0]);
         if (args.length == 2 && List.of("select", "katana", "core").contains(args[0].toLowerCase(Locale.ROOT))) {
             return filter(Arrays.stream(BreathingStyle.values()).map(v -> v.name().toLowerCase(Locale.ROOT)).toList(), args[1]);
         }

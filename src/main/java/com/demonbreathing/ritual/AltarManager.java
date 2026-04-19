@@ -174,9 +174,9 @@ public final class AltarManager implements Listener {
             int tick = 0;
             @Override public void run() {
                 tick++;
-                double progress = tick / 200.0;
+                double progress = tick / 6000.0;
                 bar.setProgress(Math.min(1.0, progress));
-                bar.setTitle("Dragon Ritual • " + crafter.getName() + " • " + (10 - tick / 20) + "s");
+                bar.setTitle("Dragon Ritual @ " + altarLoc.getBlockX() + "," + altarLoc.getBlockY() + "," + altarLoc.getBlockZ() + " • " + crafter.getName() + " • " + (300 - tick / 20) + "s");
 
                 Location c = altarLoc.clone().add(0.5, 1.2, 0.5);
                 world.spawnParticle(bp.style().chargeParticle(), c, 40, 1.2, 0.9, 1.2, 0.02);
@@ -184,7 +184,14 @@ public final class AltarManager implements Listener {
                 stand.teleport(stand.getLocation().add(0, Math.sin(tick / 7.0) * 0.03, 0));
                 stand.setRotation(tick * 12f, 0f);
 
-                if (tick >= 200) {
+                double ang = tick * 0.15;
+                for (int i = 0; i < 2; i++) {
+                    double phase = ang + (Math.PI * i);
+                    Location snake = c.clone().add(Math.cos(phase) * 1.3, (tick % 80) / 40.0, Math.sin(phase) * 1.3);
+                    world.spawnParticle(Particle.DRAGON_BREATH, snake, 8, 0.02, 0.02, 0.02, 0.01);
+                }
+
+                if (tick >= 6000) {
                     ItemStack katana = combat.createKatana(bp.style());
                     world.dropItemNaturally(altarLoc.clone().add(0.5, 1.3, 0.5), katana);
                     stand.remove();
