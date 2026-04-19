@@ -1,0 +1,11 @@
+name: DemonBreathing
+version: 1.1.0
+main: com.demonbreathing.DemonBreathingPlugin
+api-version: '1.21'
+authors: [Codex]
+description: Cinematic Demon Slayer inspired breathing PvP system.
+commands:
+  breathing:
+    description: Breathing control command.
+    usage: /breathing <select|info|abilities|reload|altar>
+    aliases: [db]

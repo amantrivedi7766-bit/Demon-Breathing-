@@ -1,0 +1,9 @@
+charge:
+  max-seconds: 60
+  release-window-seconds: 2.5
+ritual:
+  duration-seconds: 10
+  announce-to-all: true
+cinematic:
+  first-join-delay-seconds: 6
+  per-style-loop-enabled: true
