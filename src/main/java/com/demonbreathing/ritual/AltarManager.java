@@ -2,7 +2,6 @@ package com.demonbreathing.ritual;
 
 import com.demonbreathing.DemonBreathingPlugin;
 import com.demonbreathing.combat.CombatManager;
-import com.demonbreathing.model.BreathingStyle;
 import com.demonbreathing.model.KatanaBlueprint;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -11,11 +10,11 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -31,7 +30,10 @@ public final class AltarManager implements Listener {
     private final DemonBreathingPlugin plugin;
     private final CombatManager combat;
     private final NamespacedKey altarKey;
+
     private final Map<UUID, KatanaBlueprint> selected = new HashMap<>();
+    private final Map<UUID, Location> lastAltar = new HashMap<>();
+    private final Map<Location, List<ArmorStand>> recipeBoards = new HashMap<>();
     private final Set<Location> activeRituals = new HashSet<>();
 
     public AltarManager(DemonBreathingPlugin plugin, CombatManager combat) {
@@ -45,110 +47,155 @@ public final class AltarManager implements Listener {
         ItemStack stack = new ItemStack(Material.LODESTONE);
         ItemMeta meta = stack.getItemMeta();
         meta.displayName(Component.text("Breathing Altar", NamedTextColor.LIGHT_PURPLE));
-        meta.lore(List.of(Component.text("Right-click to begin forged rituals.", NamedTextColor.GRAY)));
+        meta.lore(List.of(Component.text("Right-click to open All Katanas menu.", NamedTextColor.GRAY)));
+        meta.setCustomModelData(34001);
         meta.getPersistentDataContainer().set(altarKey, PersistentDataType.BYTE, (byte) 1);
         stack.setItemMeta(meta);
         return stack;
     }
 
     @EventHandler
-    public void onPlace(BlockPlaceEvent e) {
-        ItemStack inHand = e.getItemInHand();
-        if (inHand.hasItemMeta() && inHand.getItemMeta().getPersistentDataContainer().has(altarKey, PersistentDataType.BYTE)) {
-            e.getPlayer().sendMessage(Component.text("Breathing Altar placed.", NamedTextColor.LIGHT_PURPLE));
-        }
-    }
-
-    @EventHandler
     public void onInteract(PlayerInteractEvent e) {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null) return;
         if (e.getClickedBlock().getType() != Material.LODESTONE) return;
+
         Player p = e.getPlayer();
         Location altar = e.getClickedBlock().getLocation();
+        lastAltar.put(p.getUniqueId(), altar);
         if (activeRituals.contains(altar)) return;
+
         KatanaBlueprint pick = selected.get(p.getUniqueId());
         if (pick == null) {
             openMenu(p);
             return;
         }
+
         if (!hasIngredients(p, pick)) {
-            p.sendMessage(Component.text("Required items missing for " + pick.style().displayName() + " katana.", NamedTextColor.RED));
+            p.sendMessage(Component.text("Missing recipe ingredients.", NamedTextColor.RED));
             return;
         }
+
         consumeIngredients(p, pick);
+        clearRecipeBoard(altar);
         startRitual(altar, p, pick);
         selected.remove(p.getUniqueId());
     }
 
     private void openMenu(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, Component.text("Katana Manifest Altar"));
+        Inventory inv = Bukkit.createInventory(null, 54, Component.text("All Katanas"));
+        for (int i = 0; i < 54; i++) inv.setItem(i, glass(i));
         int slot = 10;
         for (KatanaBlueprint bp : KatanaBlueprint.values()) {
-            ItemStack view = combat.createKatana(bp.style());
-            ItemMeta m = view.getItemMeta();
+            ItemStack katana = combat.createKatana(bp.style());
+            ItemMeta m = katana.getItemMeta();
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text("Click to select ritual preview", NamedTextColor.GRAY));
-            lore.add(Component.text("Ingredients:", NamedTextColor.YELLOW));
-            bp.ingredients().forEach(i -> lore.add(Component.text("- " + i.material() + " x" + i.amount(), NamedTextColor.DARK_AQUA)));
+            lore.add(Component.text("Click to preview this katana recipe", NamedTextColor.GRAY));
+            lore.add(Component.text("CustomModelData: " + (12141 + bp.style().ordinal()), NamedTextColor.DARK_GRAY));
+            bp.ingredients().forEach(i -> lore.add(Component.text(i.material() + " x" + i.amount(), NamedTextColor.AQUA)));
             m.lore(lore);
-            view.setItemMeta(m);
-            inv.setItem(slot++, view);
+            katana.setItemMeta(m);
+            inv.setItem(slot, katana);
+            slot += (slot % 9 == 7) ? 3 : 1;
         }
         player.openInventory(inv);
     }
 
+    private ItemStack glass(int i) {
+        ItemStack item = new ItemStack(i % 2 == 0 ? Material.BLACK_STAINED_GLASS_PANE : Material.PURPLE_STAINED_GLASS_PANE);
+        ItemMeta m = item.getItemMeta();
+        m.displayName(Component.text(" "));
+        item.setItemMeta(m);
+        return item;
+    }
+
     @EventHandler
     public void onMenuClick(InventoryClickEvent e) {
-        if (e.getView().title().equals(Component.text("Katana Manifest Altar"))) {
-            e.setCancelled(true);
-            if (!(e.getWhoClicked() instanceof Player p)) return;
-            ItemStack current = e.getCurrentItem();
-            if (current == null || !current.hasItemMeta()) return;
-            String name = current.getItemMeta().displayName().toString();
-            for (KatanaBlueprint bp : KatanaBlueprint.values()) {
-                if (name.contains(bp.style().displayName())) {
-                    selected.put(p.getUniqueId(), bp);
-                    p.closeInventory();
-                    p.sendMessage(Component.text(bp.style().displayName() + " ritual selected. Right-click altar again to begin.", NamedTextColor.GREEN));
-                    p.getWorld().spawnParticle(bp.style().chargeParticle(), p.getLocation().add(0, 1, 0), 70, 0.9, 0.9, 0.9, 0.02);
-                    break;
-                }
+        if (!e.getView().title().equals(Component.text("All Katanas"))) return;
+        e.setCancelled(true);
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+
+        ItemStack current = e.getCurrentItem();
+        if (current == null || !current.hasItemMeta()) return;
+
+        String name = current.getItemMeta().displayName().toString();
+        for (KatanaBlueprint bp : KatanaBlueprint.values()) {
+            if (name.contains(bp.style().displayName())) {
+                selected.put(p.getUniqueId(), bp);
+                p.closeInventory();
+                Location altar = lastAltar.get(p.getUniqueId());
+                if (altar != null) showRecipeBoard(altar, bp);
+                p.sendMessage(Component.text("Selected: " + bp.style().displayName() + " katana. Right-click altar to start ritual.", NamedTextColor.GREEN));
+                break;
             }
         }
+    }
+
+    private void showRecipeBoard(Location altar, KatanaBlueprint bp) {
+        clearRecipeBoard(altar);
+        List<ArmorStand> lines = new ArrayList<>();
+        List<String> text = new ArrayList<>();
+        text.add("§6§lRecipe: " + bp.style().displayName());
+        bp.ingredients().forEach(i -> text.add("§b" + i.material() + " x" + i.amount()));
+
+        double y = 2.8;
+        for (String line : text) {
+            ArmorStand as = altar.getWorld().spawn(altar.clone().add(0.5, y, 0.5), ArmorStand.class, a -> {
+                a.setVisible(false); a.setMarker(true); a.setGravity(false); a.customName(Component.text(line)); a.setCustomNameVisible(true);
+            });
+            lines.add(as);
+            y -= 0.3;
+        }
+        recipeBoards.put(altar, lines);
+    }
+
+    private void clearRecipeBoard(Location altar) {
+        List<ArmorStand> list = recipeBoards.remove(altar);
+        if (list != null) list.forEach(Entity::remove);
     }
 
     private void startRitual(Location altarLoc, Player crafter, KatanaBlueprint bp) {
         activeRituals.add(altarLoc);
         World world = altarLoc.getWorld();
+
+        for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
+            Location b = altarLoc.clone().add(x, 0, z);
+            b.getBlock().setType(Material.SCULK);
+        }
         altarLoc.getBlock().setType(Material.SCULK_SHRIEKER);
-        ArmorStand stand = world.spawn(altarLoc.clone().add(0.5, 1.3, 0.5), ArmorStand.class, a -> {
+
+        ArmorStand stand = world.spawn(altarLoc.clone().add(0.5, 1.8, 0.5), ArmorStand.class, a -> {
             a.setVisible(false); a.setMarker(true); a.setGravity(false); a.getEquipment().setItemInMainHand(combat.createKatana(bp.style()));
         });
 
-        BossBar ritualBar = Bukkit.createBossBar("Katana Ritual @ " + altarLoc.getBlockX() + "," + altarLoc.getBlockY() + "," + altarLoc.getBlockZ(), BarColor.PURPLE, BarStyle.SEGMENTED_10);
-        Bukkit.getOnlinePlayers().forEach(ritualBar::addPlayer);
+        BossBar bar = Bukkit.createBossBar("Ritual at " + altarLoc.getBlockX() + ", " + altarLoc.getBlockY() + ", " + altarLoc.getBlockZ(), BarColor.PURPLE, BarStyle.SEGMENTED_10);
+        Bukkit.getOnlinePlayers().forEach(bar::addPlayer);
 
         new BukkitRunnable() {
             int tick = 0;
-            @Override
-            public void run() {
+            @Override public void run() {
                 tick++;
                 double progress = tick / 200.0;
-                ritualBar.setProgress(Math.min(1.0, progress));
-                ritualBar.setTitle("Ritual: " + crafter.getName() + " • " + (10 - tick / 20) + "s");
-                Location p = altarLoc.clone().add(0.5, 1.0, 0.5);
-                world.spawnParticle(bp.style().chargeParticle(), p, 32, 0.55, 1.0, 0.55, 0.02);
-                world.spawnParticle(Particle.ENCHANT, p, 24, 0.6, 0.6, 0.6, 0.2);
-                stand.teleport(stand.getLocation().add(0, Math.sin(tick / 8.0) * 0.02, 0));
+                bar.setProgress(Math.min(1.0, progress));
+                bar.setTitle("Dragon Ritual • " + crafter.getName() + " • " + (10 - tick / 20) + "s");
+
+                Location c = altarLoc.clone().add(0.5, 1.2, 0.5);
+                world.spawnParticle(bp.style().chargeParticle(), c, 40, 1.2, 0.9, 1.2, 0.02);
+                world.spawnParticle(Particle.DRAGON_BREATH, c, 35, 1.0, 0.8, 1.0, 0.02);
+                stand.teleport(stand.getLocation().add(0, Math.sin(tick / 7.0) * 0.03, 0));
                 stand.setRotation(tick * 12f, 0f);
 
                 if (tick >= 200) {
                     ItemStack katana = combat.createKatana(bp.style());
                     world.dropItemNaturally(altarLoc.clone().add(0.5, 1.3, 0.5), katana);
-                    altarLoc.getBlock().setType(Material.AIR);
                     stand.remove();
-                    ritualBar.removeAll();
-                    Bukkit.getOnlinePlayers().forEach(pl -> pl.sendTitle("§6Katana Forged", "§f" + crafter.getName() + " obtained " + bp.style().displayName(), 5, 45, 15));
+                    bar.removeAll();
+                    for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
+                        Location b = altarLoc.clone().add(x, 0, z);
+                        if (b.getBlock().getType() == Material.SCULK) b.getBlock().setType(Material.AIR);
+                    }
+                    altarLoc.getBlock().setType(Material.AIR);
+                    world.spawnParticle(bp.style().chargeParticle(), crafter.getLocation().add(0, 1, 0), 90, 0.8, 1.2, 0.8, 0.02);
+                    Bukkit.broadcastMessage("§6[Announcement] §f" + crafter.getName() + " has obtained the " + bp.style().displayName() + " Katana!");
                     activeRituals.remove(altarLoc);
                     cancel();
                 }
@@ -157,9 +204,7 @@ public final class AltarManager implements Listener {
     }
 
     private boolean hasIngredients(Player player, KatanaBlueprint bp) {
-        for (KatanaBlueprint.Ingredient ing : bp.ingredients()) {
-            if (count(player.getInventory().getContents(), ing.material()) < ing.amount()) return false;
-        }
+        for (KatanaBlueprint.Ingredient ing : bp.ingredients()) if (count(player.getInventory().getContents(), ing.material()) < ing.amount()) return false;
         return true;
     }
 
@@ -179,11 +224,7 @@ public final class AltarManager implements Listener {
         }
     }
 
-    private int count(ItemStack[] contents, Material m) {
-        int total = 0;
-        for (ItemStack i : contents) if (i != null && i.getType() == m) total += i.getAmount();
-        return total;
-    }
+    private int count(ItemStack[] contents, Material m) { int total = 0; for (ItemStack i : contents) if (i != null && i.getType() == m) total += i.getAmount(); return total; }
 
     private void registerRecipes() {
         ShapedRecipe altar = new ShapedRecipe(new NamespacedKey(plugin, "breathing_altar"), createAltarItem());
