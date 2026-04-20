@@ -12,6 +12,7 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Item;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -163,9 +164,11 @@ public final class AltarManager implements Listener {
         }
         altarLoc.getBlock().setType(Material.SCULK_SHRIEKER);
 
-        ArmorStand stand = world.spawn(altarLoc.clone().add(0.5, 1.8, 0.5), ArmorStand.class, a -> {
-            a.setVisible(false); a.setMarker(true); a.setGravity(false); a.getEquipment().setItemInMainHand(combat.createKatana(bp.style()));
-        });
+        Item floatingSword = world.dropItem(altarLoc.clone().add(0.5, 1.8, 0.5), combat.createKatana(bp.style()));
+        floatingSword.setGravity(false);
+        floatingSword.setInvulnerable(true);
+        floatingSword.setCanMobPickup(false);
+        floatingSword.setPickupDelay(Integer.MAX_VALUE);
 
         BossBar bar = Bukkit.createBossBar("Ritual at " + altarLoc.getBlockX() + ", " + altarLoc.getBlockY() + ", " + altarLoc.getBlockZ(), BarColor.PURPLE, BarStyle.SEGMENTED_10);
         Bukkit.getOnlinePlayers().forEach(bar::addPlayer);
@@ -181,8 +184,10 @@ public final class AltarManager implements Listener {
                 Location c = altarLoc.clone().add(0.5, 1.2, 0.5);
                 world.spawnParticle(bp.style().chargeParticle(), c, 40, 1.2, 0.9, 1.2, 0.02);
                 world.spawnParticle(Particle.DRAGON_BREATH, c, 35, 1.0, 0.8, 1.0, 0.02);
-                stand.teleport(stand.getLocation().add(0, Math.sin(tick / 7.0) * 0.03, 0));
-                stand.setRotation(tick * 12f, 0f);
+                double swordAngle = tick * 0.18;
+                Location swordLoc = altarLoc.clone().add(0.5 + Math.cos(swordAngle) * 0.7, 1.8 + Math.sin(tick / 8.0) * 0.12, 0.5 + Math.sin(swordAngle) * 0.7);
+                floatingSword.teleport(swordLoc);
+                floatingSword.setRotation((float) (tick * 12f), 0f);
 
                 double ang = tick * 0.15;
                 for (int i = 0; i < 2; i++) {
@@ -194,7 +199,7 @@ public final class AltarManager implements Listener {
                 if (tick >= 6000) {
                     ItemStack katana = combat.createKatana(bp.style());
                     world.dropItemNaturally(altarLoc.clone().add(0.5, 1.3, 0.5), katana);
-                    stand.remove();
+                    floatingSword.remove();
                     bar.removeAll();
                     for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
                         Location b = altarLoc.clone().add(x, 0, z);
