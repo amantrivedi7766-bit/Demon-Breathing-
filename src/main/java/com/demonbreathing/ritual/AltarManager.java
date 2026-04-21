@@ -16,6 +16,7 @@ import org.bukkit.entity.Item;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -36,6 +37,7 @@ public final class AltarManager implements Listener {
     private final Map<UUID, Location> lastAltar = new HashMap<>();
     private final Map<Location, List<ArmorStand>> recipeBoards = new HashMap<>();
     private final Set<Location> activeRituals = new HashSet<>();
+    private final Map<Location, Long> ritualEndsAt = new HashMap<>();
 
     public AltarManager(DemonBreathingPlugin plugin, CombatManager combat) {
         this.plugin = plugin;
@@ -156,6 +158,7 @@ public final class AltarManager implements Listener {
 
     private void startRitual(Location altarLoc, Player crafter, KatanaBlueprint bp) {
         activeRituals.add(altarLoc);
+        ritualEndsAt.put(altarLoc, System.currentTimeMillis() + 300_000L);
         World world = altarLoc.getWorld();
 
         for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
@@ -177,13 +180,14 @@ public final class AltarManager implements Listener {
             int tick = 0;
             @Override public void run() {
                 tick++;
-                double progress = tick / 6000.0;
-                bar.setProgress(Math.min(1.0, progress));
-                bar.setTitle("Dragon Ritual @ " + altarLoc.getBlockX() + "," + altarLoc.getBlockY() + "," + altarLoc.getBlockZ() + " • " + crafter.getName() + " • " + (300 - tick / 20) + "s");
+                long leftMs = Math.max(0L, ritualEndsAt.getOrDefault(altarLoc, System.currentTimeMillis()) - System.currentTimeMillis());
+                double progress = 1.0 - (leftMs / 300000.0);
+                bar.setProgress(Math.max(0.0, Math.min(1.0, progress)));
+                bar.setTitle("Dragon Ritual @ " + altarLoc.getBlockX() + "," + altarLoc.getBlockY() + "," + altarLoc.getBlockZ() + " • " + crafter.getName() + " • " + (leftMs / 1000) + "s");
 
                 Location c = altarLoc.clone().add(0.5, 1.2, 0.5);
-                world.spawnParticle(bp.style().chargeParticle(), c, 40, 1.2, 0.9, 1.2, 0.02);
-                world.spawnParticle(Particle.DRAGON_BREATH, c, 35, 1.0, 0.8, 1.0, 0.02);
+                if (tick % 2 == 0) world.spawnParticle(bp.style().chargeParticle(), c, 12, 0.7, 0.5, 0.7, 0.01);
+                if (tick % 4 == 0) world.spawnParticle(Particle.DRAGON_BREATH, c, 6, 0.5, 0.3, 0.5, 0.01);
                 double swordAngle = tick * 0.18;
                 Location swordLoc = altarLoc.clone().add(0.5 + Math.cos(swordAngle) * 0.7, 1.8 + Math.sin(tick / 8.0) * 0.12, 0.5 + Math.sin(swordAngle) * 0.7);
                 floatingSword.teleport(swordLoc);
@@ -193,10 +197,10 @@ public final class AltarManager implements Listener {
                 for (int i = 0; i < 2; i++) {
                     double phase = ang + (Math.PI * i);
                     Location snake = c.clone().add(Math.cos(phase) * 1.3, (tick % 80) / 40.0, Math.sin(phase) * 1.3);
-                    world.spawnParticle(Particle.DRAGON_BREATH, snake, 8, 0.02, 0.02, 0.02, 0.01);
+                    if (tick % 3 == 0) world.spawnParticle(Particle.DRAGON_BREATH, snake, 2, 0.01, 0.01, 0.01, 0.0);
                 }
 
-                if (tick >= 6000) {
+                if (leftMs <= 0L) {
                     ItemStack katana = combat.createKatana(bp.style());
                     world.dropItemNaturally(altarLoc.clone().add(0.5, 1.3, 0.5), katana);
                     floatingSword.remove();
@@ -209,10 +213,24 @@ public final class AltarManager implements Listener {
                     world.spawnParticle(bp.style().chargeParticle(), crafter.getLocation().add(0, 1, 0), 90, 0.8, 1.2, 0.8, 0.02);
                     Bukkit.broadcastMessage("§6[Announcement] §f" + crafter.getName() + " has obtained the " + bp.style().displayName() + " Katana!");
                     activeRituals.remove(altarLoc);
+                    ritualEndsAt.remove(altarLoc);
                     cancel();
                 }
             }
         }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+
+    @EventHandler
+    public void onBreak(BlockBreakEvent event) {
+        Location broken = event.getBlock().getLocation();
+        for (Location center : activeRituals) {
+            if (center.getWorld().equals(broken.getWorld()) && Math.abs(center.getBlockX() - broken.getBlockX()) <= 2 && Math.abs(center.getBlockY() - broken.getBlockY()) <= 1 && Math.abs(center.getBlockZ() - broken.getBlockZ()) <= 2) {
+                event.setCancelled(true);
+                event.getPlayer().sendActionBar(Component.text("Ritual platform is protected until ritual ends.", NamedTextColor.RED));
+                return;
+            }
+        }
     }
 
     private boolean hasIngredients(Player player, KatanaBlueprint bp) {

@@ -64,13 +64,13 @@ These are sent in action bar using:
 2. Click katana -> recipe board appears above altar.
 3. Right-click altar with ingredients.
 4. Ritual starts for **5 minutes**:
-   - Bossbar shows coordinates + crafter + timer.
-   - Katana rotates above altar.
-   - Dragon-breath snake particles rotate around ritual zone.
-   - Ritual platform is active.
-5. On completion:
+   - Bossbar shows coordinates + crafter + live timer.
+   - Katana rotates in circular cinematic motion above altar.
+   - Particle count is optimized (movie-style, not excessive).
+   - Ritual platform is protected (players cannot break it during ritual).
+5. On completion (auto):
    - Katana drops,
-   - Platform is removed,
+   - Platform is removed automatically,
    - Global English announcement is broadcast.
 
 ## Build
