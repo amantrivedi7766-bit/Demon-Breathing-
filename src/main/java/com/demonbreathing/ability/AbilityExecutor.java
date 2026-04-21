@@ -92,7 +92,7 @@ public final class AbilityExecutor {
                                 hitTargets.add(le);
                                 damageTarget(player, le, damagePerHit);
                                 le.setVelocity(new Vector(0, 0.1, 0));
-                                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 5, 2, false, false));
+                                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 5, 2, false, false));
                             }
                         }
                         player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
@@ -118,7 +118,7 @@ public final class AbilityExecutor {
             @Override
             public void run() {
                 if (traveled >= length || !player.isOnline()) {
-                    player.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, current, 5, 0.5, 0.5, 0.5, 0);
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, current, 5, 0.5, 0.5, 0.5, 0);
                     player.getWorld().playSound(current, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.7f);
                     areaDamage(player, current, 3.5, damage * 1.5);
                     cancel();
@@ -202,7 +202,7 @@ public final class AbilityExecutor {
                             damageTarget(player, le, damage);
                         }
                     }
-                    player.getWorld().spawnParticle(Particle.WATER_BUBBLE, player.getLocation(), 100, radius / 2, 0.5, radius / 2, 0.1);
+                    player.getWorld().spawnParticle(Particle.WATER_SPLASH, player.getLocation(), 100, radius / 2, 0.5, radius / 2, 0.1);
                     cancel();
                     return;
                 }
@@ -210,8 +210,8 @@ public final class AbilityExecutor {
                 double x = Math.cos(angle) * radius;
                 double z = Math.sin(angle) * radius;
                 Location loc = player.getLocation().clone().add(x, 0.5, z);
-                player.getWorld().spawnParticle(Particle.WATER_BUBBLE, loc, 5, 0.1, 0.1, 0.1, 0.02);
-                player.getWorld().spawnParticle(Particle.DRIP_WATER, loc, 2, 0, 0, 0, 0);
+                player.getWorld().spawnParticle(Particle.WATER_SPLASH, loc, 5, 0.1, 0.1, 0.1, 0.02);
+                player.getWorld().spawnParticle(Particle.WATER_DROP, loc, 2, 0, 0, 0, 0);
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
@@ -231,7 +231,7 @@ public final class AbilityExecutor {
             @Override
             public void run() {
                 if (ticks > 40 || !target.isValid() || !player.isOnline()) {
-                    player.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, dragonLoc, 5, 0.5, 0.5, 0.5, 0);
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, dragonLoc, 5, 0.5, 0.5, 0.5, 0);
                     player.getWorld().playSound(dragonLoc, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.7f);
                     areaDamage(player, dragonLoc, 4.0, 8.0 + ratio * 10);
                     cancel();
@@ -266,8 +266,8 @@ public final class AbilityExecutor {
                     cancel();
                     return;
                 }
-                player.getWorld().spawnParticle(Particle.WATER_BUBBLE, player.getLocation().add(0, 1, 0), 5, 0.3, 0.3, 0.3, 0.02);
-                player.getWorld().spawnParticle(Particle.DRIP_WATER, player.getLocation(), 2, 0, 0, 0, 0);
+                player.getWorld().spawnParticle(Particle.WATER_SPLASH, player.getLocation().add(0, 1, 0), 5, 0.3, 0.3, 0.3, 0.02);
+                player.getWorld().spawnParticle(Particle.WATER_DROP, player.getLocation(), 2, 0, 0, 0, 0);
                 if (player.isSprinting() && ticks % 5 == 0) {
                     areaDamage(player, player.getLocation(), 2.5, 2.0 + ratio * 3.0);
                 }
@@ -329,7 +329,7 @@ public final class AbilityExecutor {
                 traveled += 1.5;
                 loc.add(dir.clone().multiply(1.5));
                 player.getWorld().spawnParticle(Particle.FLAME, loc, 20, 0.8, 0.8, 0.8, 0.02);
-                player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, loc, 2, 0.3, 0.3, 0.3, 0);
+                player.getWorld().spawnParticle(Particle.SMOKE, loc, 2, 0.3, 0.3, 0.3, 0);
                 areaDamage(player, loc, 3.0, 5.0 + ratio * 7.0);
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -434,7 +434,7 @@ public final class AbilityExecutor {
                         le.setVelocity(pull);
                     }
                 }
-                player.getWorld().spawnParticle(Particle.SPELL, center, 50, 4, 1, 4, 0);
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, center, 50, 4, 1, 4, 0);
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -504,8 +504,8 @@ public final class AbilityExecutor {
                     return;
                 }
                 double radius = (30 - ticks) * 0.3;
-                player.getWorld().spawnParticle(Particle.SPELL, center, 50, radius, 1, radius, 0);
-                player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, center, 10, radius / 2, 0.5, radius / 2, 0);
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, center, 50, radius, 1, radius, 0);
+                player.getWorld().spawnParticle(Particle.SMOKE, center, 10, radius / 2, 0.5, radius / 2, 0);
                 for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius / 2, radius)) {
                     if (e instanceof LivingEntity le && le != player) {
                         Vector pull = center.toVector().subtract(le.getLocation().toVector()).normalize().multiply(0.3);
@@ -545,7 +545,7 @@ public final class AbilityExecutor {
             @Override
             public void run() {
                 if (height >= 5 + ratio * 4) {
-                    player.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, center.clone().add(0, height, 0), 5, 0.5, 0.5, 0.5, 0);
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, center.clone().add(0, height, 0), 5, 0.5, 0.5, 0.5, 0);
                     areaDamage(player, center.clone().add(0, height, 0), 4.0, 7.0 + ratio * 9.0);
                     cancel();
                     return;
@@ -553,7 +553,7 @@ public final class AbilityExecutor {
                 height += 0.5;
                 Location loc = center.clone().add(0, height, 0);
                 player.getWorld().spawnParticle(Particle.FLAME, loc, 10, 0.5, 0.2, 0.5, 0.02);
-                player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, loc, 2, 0.2, 0.1, 0.2, 0);
+                player.getWorld().spawnParticle(Particle.SMOKE, loc, 2, 0.2, 0.1, 0.2, 0);
                 for (Entity e : center.getWorld().getNearbyEntities(center, 3, height, 3)) {
                     if (e instanceof LivingEntity le && le != player) {
                         le.setVelocity(new Vector(0, 0.8 + ratio, 0));
@@ -622,11 +622,11 @@ public final class AbilityExecutor {
                     return;
                 }
                 player.getWorld().spawnParticle(Particle.CLOUD, center, 50, 4, 1, 4, 0.01);
-                player.getWorld().spawnParticle(Particle.SPELL, center, 20, 3, 0.5, 3, 0);
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, center, 20, 3, 0.5, 3, 0);
                 for (Entity e : center.getWorld().getNearbyEntities(center, 5, 3, 5)) {
                     if (e instanceof LivingEntity le && le != player) {
                         le.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
-                        le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 1));
+                        le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1));
                     }
                 }
             }
@@ -640,7 +640,7 @@ public final class AbilityExecutor {
             return;
         }
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1.2f);
-        player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, player.getLocation(), 30, 0.5, 1, 0.5, 0.05);
+        player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation(), 30, 0.5, 1, 0.5, 0.05);
         Location behind = target.getLocation().clone().add(target.getLocation().getDirection().multiply(-1.5));
         behind.setDirection(target.getLocation().getDirection());
         player.teleport(behind);
@@ -678,7 +678,7 @@ public final class AbilityExecutor {
 
     private void drawDragonSegment(Location loc, Vector direction, double length) {
         World w = loc.getWorld();
-        w.spawnParticle(Particle.BUBBLE_COLUMN_UP, loc, 10, 0.5, 0.5, 0.5, 0.02);
+        w.spawnParticle(Particle.WATER_SPLASH, loc, 10, 0.5, 0.5, 0.5, 0.02);
         w.spawnParticle(Particle.DRAGON_BREATH, loc, 3, 0.2, 0.2, 0.2, 0);
     }
 
@@ -715,7 +715,7 @@ public final class AbilityExecutor {
                 traveled += 1.0;
                 loc.add(direction.clone().multiply(1.0));
                 player.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 5, 0.2, 0.2, 0.2, 0.01);
-                player.getWorld().spawnParticle(Particle.SPELL, loc, 2, 0, 0, 0, 0);
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, loc, 2, 0, 0, 0, 0);
                 areaDamage(player, loc, 1.5, 3.0 + ratio * 4.0);
             }
         }.runTaskTimer(plugin, 0L, 1L);
