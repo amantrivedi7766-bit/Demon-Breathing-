@@ -52,7 +52,6 @@ public final class AbilityExecutor {
 
         new BukkitRunnable() {
             int step = 0;
-            Location lastLoc = player.getLocation().clone();
             List<LivingEntity> hitTargets = new ArrayList<>();
 
             @Override
@@ -134,8 +133,8 @@ public final class AbilityExecutor {
                 traveled += 1.2;
                 current.add(direction.clone().multiply(1.2));
                 player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 15, 0.8, 0.1, 0.8, 0.05);
-                player.getWorld().spawnParticle(Particle.WAX_ON, current, 14, 0.6, 0.08, 0.6, 0.02);
-                player.getWorld().spawnParticle(Particle.GLOW, current, 5, 0.25, 0.02, 0.25, 0.01);
+                player.getWorld().spawnParticle(Particle.CRIT, current, 14, 0.6, 0.08, 0.6, 0.02);
+                player.getWorld().spawnParticle(Particle.END_ROD, current, 5, 0.25, 0.02, 0.25, 0.01);
                 areaDamage(player, current, 2.0, damage * 0.3);
                 for (int i = 0; i < 3; i++) {
                     Location offset = current.clone().add(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5);
@@ -230,7 +229,7 @@ public final class AbilityExecutor {
                 Location loc = player.getLocation().clone().add(x, 0.5, z);
                 player.getWorld().spawnParticle(Particle.SPLASH, loc, 5, 0.1, 0.1, 0.1, 0.02);
                 player.getWorld().spawnParticle(Particle.WATER_WAKE, loc, 2, 0, 0, 0, 0);
-                player.getWorld().spawnParticle(Particle.FISHING, loc, 1, 0.05, 0.05, 0.05, 0);
+                player.getWorld().spawnParticle(Particle.BUBBLE, loc, 2, 0.05, 0.05, 0.05, 0.01);
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
