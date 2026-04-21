@@ -6,13 +6,17 @@ import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public final class AbilityExecutor {
     private final DemonBreathingPlugin plugin;
+    private final Random random = new Random();
 
     public AbilityExecutor(DemonBreathingPlugin plugin) {
         this.plugin = plugin;
@@ -30,232 +34,762 @@ public final class AbilityExecutor {
         }
     }
 
+    // ==================== THUNDER BREATHING ====================
     private void thunder(Player player, int form, double ratio, double chargeSeconds) {
         if (form == 0) {
-            int hits = 3 + (int) Math.round(ratio * 6.0);
-            dashHits(player, 2.0 + ratio * 1.6, hits, 3.6 + ratio * 2.7, Particle.ELECTRIC_SPARK, Sound.ENTITY_LIGHTNING_BOLT_THUNDER);
+            // First Form: Thunderclap and Flash Sixfold Overdrive
+            sixfoldDash(player, ratio);
         } else if (form == 1) {
-            int strikes = 5 + (int) Math.round(ratio * 8.0);
-            for (int i = 0; i < strikes; i++) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    Location center = player.getLocation();
-                    double x = (Math.random() - 0.5) * (6 + ratio * 12);
-                    double z = (Math.random() - 0.5) * (6 + ratio * 12);
-                    Location strike = center.clone().add(x, 0, z);
-                    strike.getWorld().strikeLightningEffect(strike);
-                    areaDamage(player, strike, 2.5 + ratio * 1.5, 4.0 + ratio * 7.0);
-                }, i * 3L);
-            }
+            // Second Form: Thunder Rift
+            thunderRift(player, ratio);
         } else {
-            Location target = player.getLocation().clone().add(0, 10 + ratio * 8, 0);
-            player.teleport(target);
-            player.getWorld().playSound(target, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 0.8f);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Location impact = player.getLocation();
-                impact.getWorld().strikeLightning(impact);
-                areaDamage(player, impact, 4.0 + ratio * 2.5, 9.0 + ratio * 13.0);
-            }, 10L);
+            // Third Form: Divine Thunder Judgment
+            divineJudgment(player, ratio);
         }
     }
 
-    private void water(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            radialSlash(player, 3.5 + ratio * 2.8, 5.0 + ratio * 6.0, Particle.SPLASH);
-        } else if (form == 1) {
-            projectileWave(player, 15 + ratio * 18, 0.9 + ratio * 0.9, 5.0 + ratio * 8.0, Particle.BUBBLE_COLUMN_UP, Sound.ENTITY_DROWNED_SHOOT);
-        } else {
-            radialSlash(player, 4.0 + ratio * 3.5, 5.5 + ratio * 7.5 + chargeSeconds * 0.22, Particle.FALLING_WATER);
-            player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SPEED, (int) (30 + ratio * 70), 1));
-        }
-    }
+    private void sixfoldDash(Player player, double ratio) {
+        int dashes = 6;
+        double dashRange = 5.0 + ratio * 4.0;
+        double damagePerHit = 3.0 + ratio * 4.0;
+        double finalAoE = 5.0 + ratio * 6.0;
 
-    private void sun(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            radialSlash(player, 3.4 + ratio * 2.5, 6.0 + ratio * 7.5, Particle.FLAME);
-            player.getWorld().playSound(player.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1f, 1.2f);
-        } else if (form == 1) {
-            projectileWave(player, 17 + ratio * 18, 1.0 + ratio * 1.0, 6.5 + ratio * 9.0, Particle.FLAME, Sound.ITEM_TRIDENT_THUNDER);
-        } else {
-            Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 2);
-            areaDamage(player, loc, 5.5 + ratio * 3.8, 10.0 + ratio * 15.0);
-            setFire(player, loc, 4.5 + ratio * 4.0, 60 + (int) (ratio * 120));
-        }
-    }
-
-    private void wind(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            Location base = player.getLocation();
-            for (int i = 0; i < 36; i++) {
-                double angle = i * (Math.PI / 18);
-                base.getWorld().spawnParticle(Particle.CLOUD, base.clone().add(Math.cos(angle) * 2.2, 0.2 + i * 0.05, Math.sin(angle) * 2.2), 1, 0, 0, 0, 0);
-            }
-            areaDamage(player, base, 3.8 + ratio * 2.4, 5.0 + ratio * 7.0);
-        } else if (form == 1) {
-            dashHits(player, 1.8 + ratio * 1.4, 2 + (int) (ratio * 3), 5.0 + ratio * 6.5, Particle.CLOUD, Sound.ENTITY_PHANTOM_FLAP);
-        } else {
-            Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.GUST_EMITTER_LARGE, loc, 1);
-            areaDamage(player, loc, 5.0 + ratio * 3.2, 8.0 + ratio * 12.5);
-            knockbackArea(player, loc, 5.0 + ratio * 3.2, 1.0 + ratio * 1.2);
-        }
-    }
-
-    private void moon(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            int slices = 3 + (int) (ratio * 4);
-            for (int i = 0; i < slices; i++) {
-                projectileWave(player, 10 + ratio * 12, 0.8 + ratio * 0.8, 3.5 + ratio * 5.5, Particle.DRAGON_BREATH, Sound.BLOCK_AMETHYST_BLOCK_CHIME);
-            }
-        } else if (form == 1) {
-            int bursts = 5 + (int) (ratio * 6);
-            for (int i = 0; i < bursts; i++) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    Location p = player.getLocation().clone().add((Math.random() - 0.5) * 8, 1, (Math.random() - 0.5) * 8);
-                    p.getWorld().spawnParticle(Particle.DRAGON_BREATH, p, 20, 0.3, 0.3, 0.3, 0.02);
-                    areaDamage(player, p, 2.3 + ratio * 1.8, 3.8 + ratio * 5.5);
-                }, i * 2L);
-            }
-        } else {
-            Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 40, 2.0, 1.2, 2.0, 0.02);
-            areaDamage(player, loc, 5.3 + ratio * 3.8, 9.5 + ratio * 14.0);
-        }
-    }
-
-    private void flame(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            projectileWave(player, 12 + ratio * 15, 1.0 + ratio * 0.8, 5.2 + ratio * 6.8, Particle.FLAME, Sound.ITEM_FIRECHARGE_USE);
-        } else if (form == 1) {
-            areaDamage(player, player.getLocation(), 3.2 + ratio * 2.0, 4.8 + ratio * 5.5);
-            for (Entity e : nearbyLiving(player, player.getLocation(), 3.2 + ratio * 2.0)) {
-                e.setVelocity(new Vector(0, 0.75 + ratio * 0.7, 0));
-                if (e instanceof LivingEntity living) {
-                    living.setFireTicks(60 + (int) (ratio * 120));
-                }
-            }
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 1.0f);
-        } else {
-            dashHits(player, 2.1 + ratio * 1.4, 2 + (int) (ratio * 4), 6.0 + ratio * 9.0, Particle.FLAME, Sound.ENTITY_BLAZE_SHOOT);
-        }
-    }
-
-    private void mist(Player player, int form, double ratio, double chargeSeconds) {
-        if (form == 0) {
-            dashHits(player, 2.0 + ratio * 1.6, 2 + (int) (ratio * 3), 5.2 + ratio * 6.2, Particle.CLOUD, Sound.ENTITY_ENDERMAN_TELEPORT);
-        } else if (form == 1) {
-            Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.WHITE_ASH, loc, 80, 2.2, 1.1, 2.2, 0.01);
-            for (Entity e : nearbyLiving(player, loc, 4.0 + ratio * 2.8)) {
-                if (e instanceof LivingEntity living) {
-                    living.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, (int) (50 + ratio * 80), 0));
-                    living.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS, (int) (40 + ratio * 70), 1));
-                }
-            }
-        } else {
-            LivingEntity target = nearestEnemy(player, 18 + ratio * 12);
-            if (target != null) {
-                Location behind = target.getLocation().clone().add(target.getLocation().getDirection().multiply(-1.2));
-                behind.setDirection(target.getLocation().getDirection());
-                player.teleport(behind);
-                player.getWorld().playSound(behind, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1.4f);
-                damageTarget(player, target, 7.0 + ratio * 11.5);
-            } else {
-                dashHits(player, 1.7 + ratio * 1.2, 1, 6.0 + ratio * 8.0, Particle.CLOUD, Sound.ENTITY_ENDERMAN_TELEPORT);
-            }
-        }
-    }
-
-    private void radialSlash(Player player, double radius, double damage, Particle particle) {
-        World world = player.getWorld();
-        Location center = player.getLocation();
-        world.spawnParticle(particle, center, 100, radius * 0.35, 0.8, radius * 0.35, 0.03);
-        world.playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 1f);
-        areaDamage(player, center, radius, damage);
-    }
-
-    private void projectileWave(Player player, double distance, double speed, double damage, Particle particle, Sound sound) {
-        player.getWorld().playSound(player.getLocation(), sound, 1f, 1f);
-        Vector direction = player.getLocation().getDirection().normalize();
         new BukkitRunnable() {
-            double traveled = 0;
-            Location pos = player.getEyeLocation().clone();
+            int step = 0;
+            Location lastLoc = player.getLocation().clone();
+            List<LivingEntity> hitTargets = new ArrayList<>();
 
             @Override
             public void run() {
-                traveled += speed;
-                if (traveled > distance || !player.isOnline()) {
+                if (step >= dashes || !player.isOnline()) {
+                    // Final strike
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.8f);
+                    player.getWorld().spawnParticle(Particle.FLASH, player.getLocation(), 5, 2, 1, 2, 0);
+                    areaDamage(player, player.getLocation(), 4.0, finalAoE);
+                    // Camera shake effect via directional velocity or just sound
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 0.5f);
                     cancel();
                     return;
                 }
-                pos.add(direction.clone().multiply(speed));
-                pos.getWorld().spawnParticle(particle, pos, 8, 0.15, 0.15, 0.15, 0.01);
-                areaDamage(player, pos, 1.7, damage);
+
+                // Find nearest enemy within range
+                LivingEntity target = findNearestEnemyInSight(player, dashRange * 1.5);
+                Location targetLoc;
+                if (target != null) {
+                    targetLoc = target.getLocation().clone();
+                } else {
+                    targetLoc = player.getLocation().clone().add(player.getLocation().getDirection().multiply(dashRange));
+                }
+
+                // Zig-zag offset
+                Vector direction = targetLoc.clone().subtract(player.getLocation()).toVector().normalize();
+                Vector perpendicular = new Vector(-direction.getZ(), 0, direction.getX()).normalize();
+                double offset = (step % 2 == 0 ? 1 : -1) * (1.5 + ratio);
+                Location dashDest = targetLoc.clone().add(perpendicular.multiply(offset));
+                dashDest.setY(player.getLocation().getY());
+
+                // Dash movement
+                player.setVelocity(direction.multiply(2.5));
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, 0.7f, 1.8f);
+                
+                // Afterimage particles along path
+                drawLineParticle(player.getLocation(), dashDest, Particle.ELECTRIC_SPARK, 20);
+                
+                // Damage nearby enemies after short delay (simulate dash hit)
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        for (Entity e : player.getNearbyEntities(3.0, 2.0, 3.0)) {
+                            if (e instanceof LivingEntity le && le != player && !hitTargets.contains(le)) {
+                                hitTargets.add(le);
+                                damageTarget(player, le, damagePerHit);
+                                // Micro stun
+                                le.setVelocity(new Vector(0, 0.1, 0));
+                                le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 5, 2, false, false));
+                            }
+                        }
+                        player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
+                    }
+                }.runTaskLater(plugin, 2L);
+
+                step++;
+            }
+        }.runTaskTimer(plugin, 0L, 4L); // 4 ticks between dashes
+    }
+
+    private void thunderRift(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 1.2f, 0.6f);
+        Location start = player.getLocation().clone();
+        Vector direction = start.getDirection().normalize();
+        double length = 12.0 + ratio * 10.0;
+        double damage = 4.0 + ratio * 5.0;
+        
+        new BukkitRunnable() {
+            double traveled = 0;
+            Location current = start.clone().add(0, -0.5, 0); // Ground level
+            @Override
+            public void run() {
+                if (traveled >= length || !player.isOnline()) {
+                    // End explosion
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, current, 1);
+                    player.getWorld().playSound(current, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.7f);
+                    areaDamage(player, current, 3.5, damage * 1.5);
+                    cancel();
+                    return;
+                }
+                
+                traveled += 1.2;
+                current.add(direction.clone().multiply(1.2));
+                
+                // Ground crack effect
+                player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 15, 0.8, 0.1, 0.8, 0.05);
+                player.getWorld().spawnParticle(Particle.SCRAPE, current, 5, 0.5, 0, 0.5, 0);
+                
+                // Damage enemies standing on crack
+                areaDamage(player, current, 2.0, damage * 0.3);
+                
+                // Jagged lightning veins (side particles)
+                for (int i = 0; i < 3; i++) {
+                    Location offset = current.clone().add(random.nextDouble()-0.5, 0, random.nextDouble()-0.5);
+                    player.getWorld().spawnParticle(Particle.ENCHANTMENT_TABLE, offset, 2, 0, 0, 0, 0);
+                }
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void dashHits(Player player, double speed, int hits, double damage, Particle particle, Sound sound) {
-        Vector direction = player.getLocation().getDirection().normalize();
-        player.setVelocity(direction.multiply(speed));
-        player.getWorld().playSound(player.getLocation(), sound, 1f, 1.2f);
-
+    private void divineJudgment(Player player, double ratio) {
+        // Vanish and appear in sky
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1.5f);
+        player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation(), 50, 0.5, 1, 0.5, 0.1);
+        
+        Location skyLoc = player.getLocation().clone().add(0, 15 + ratio * 8, 0);
+        player.teleport(skyLoc);
+        player.setVelocity(new Vector(0, 0, 0));
+        
+        // Divine beam descent
         new BukkitRunnable() {
-            int remaining = hits;
-
+            int tick = 0;
             @Override
             public void run() {
-                if (remaining-- <= 0 || !player.isOnline()) {
+                if (tick == 0) {
+                    // Beam effect from sky to ground
+                    Location ground = player.getLocation().clone();
+                    ground.setY(player.getWorld().getHighestBlockYAt(ground) + 1);
+                    drawVerticalBeam(player.getLocation(), ground, Particle.ELECTRIC_SPARK);
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2f, 0.5f);
+                }
+                if (tick >= 20) {
+                    // Impact
+                    player.setVelocity(new Vector(0, -3, 0));
+                    player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.4f);
+                }
+                if (tick >= 30 || player.isOnGround()) {
+                    Location impact = player.getLocation();
+                    player.getWorld().strikeLightningEffect(impact);
+                    player.getWorld().createExplosion(impact, 0f, false, false);
+                    areaDamage(player, impact, 5.0 + ratio * 3, 12.0 + ratio * 15);
+                    player.getWorld().spawnParticle(Particle.FLASH, impact, 10, 3, 2, 3, 0);
                     cancel();
                     return;
                 }
-                Location loc = player.getLocation();
-                loc.getWorld().spawnParticle(particle, loc, 25, 0.3, 0.3, 0.3, 0.04);
-                areaDamage(player, loc, 2.4, damage / Math.max(1, hits));
+                tick++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // ==================== WATER BREATHING ====================
+    private void water(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            tidalSeveringFlow(player, ratio);
+        } else if (form == 1) {
+            abyssalDragonCollapse(player, ratio);
+        } else {
+            endlessCurrentDominion(player, ratio, chargeSeconds);
+        }
+    }
+
+    private void tidalSeveringFlow(Player player, double ratio) {
+        double radius = 4.0 + ratio * 3.0;
+        double damage = 4.5 + ratio * 5.0;
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_SPLASH, 1f, 1.2f);
+        
+        new BukkitRunnable() {
+            double angle = 0;
+            int steps = 20;
+            @Override
+            public void run() {
+                if (angle >= 2 * Math.PI) {
+                    // Final pull and slash
+                    for (Entity e : player.getNearbyEntities(radius, 2, radius)) {
+                        if (e instanceof LivingEntity le && le != player) {
+                            Vector pull = player.getLocation().toVector().subtract(le.getLocation().toVector()).normalize().multiply(0.8);
+                            le.setVelocity(pull);
+                            damageTarget(player, le, damage);
+                        }
+                    }
+                    player.getWorld().spawnParticle(Particle.SPLASH, player.getLocation(), 100, radius/2, 0.5, radius/2, 0.1);
+                    cancel();
+                    return;
+                }
+                angle += Math.PI / 10;
+                double x = Math.cos(angle) * radius;
+                double z = Math.sin(angle) * radius;
+                Location loc = player.getLocation().clone().add(x, 0.5, z);
+                player.getWorld().spawnParticle(Particle.WATER_SPLASH, loc, 5, 0.1, 0.1, 0.1, 0.02);
+                player.getWorld().spawnParticle(Particle.DRIPPING_WATER, loc, 2, 0, 0, 0, 0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void abyssalDragonCollapse(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 0.8f);
+        LivingEntity target = findNearestEnemyInSight(player, 20 + ratio * 15);
+        if (target == null) {
+            // Just forward dragon
+            launchWaterDragon(player, player.getLocation().getDirection(), ratio);
+            return;
+        }
+        // Dragon that tracks and coils
+        new BukkitRunnable() {
+            int ticks = 0;
+            Location dragonLoc = player.getEyeLocation().clone();
+            Vector direction = player.getLocation().getDirection().normalize();
+            @Override
+            public void run() {
+                if (ticks > 40 || !target.isValid() || !player.isOnline()) {
+                    // Explode
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, dragonLoc, 1);
+                    player.getWorld().playSound(dragonLoc, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.7f);
+                    areaDamage(player, dragonLoc, 4.0, 8.0 + ratio * 10);
+                    cancel();
+                    return;
+                }
+                // Move toward target
+                Vector toTarget = target.getLocation().toVector().subtract(dragonLoc.toVector()).normalize();
+                direction = direction.add(toTarget).normalize();
+                dragonLoc.add(direction.multiply(0.8));
+                
+                // Dragon body particles
+                drawDragonSegment(dragonLoc, direction, 2.0);
+                player.getWorld().playSound(dragonLoc, Sound.ENTITY_PHANTOM_FLAP, 0.5f, 1.5f);
+                
+                // Damage on contact
+                if (dragonLoc.distance(target.getLocation()) < 3.0) {
+                    damageTarget(player, target, 3.0 + ratio * 4.0);
+                    target.setVelocity(new Vector(0, 0.3, 0)); // coil stun
+                }
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void endlessCurrentDominion(Player player, double ratio, double chargeSeconds) {
+        int duration = (int)(60 + chargeSeconds * 20 + ratio * 60);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, duration, 2, false, false, true));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, duration, 0, false, false));
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, 1f, 1f);
+        
+        // Flow aura runnable
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= duration || !player.isOnline() || !player.hasPotionEffect(PotionEffectType.SPEED)) {
+                    cancel();
+                    return;
+                }
+                // Constant flowing trail
+                player.getWorld().spawnParticle(Particle.BUBBLE_POP, player.getLocation().add(0, 1, 0), 5, 0.3, 0.3, 0.3, 0.02);
+                player.getWorld().spawnParticle(Particle.WATER_WAKE, player.getLocation(), 2, 0, 0, 0, 0);
+                
+                // Every movement dash becomes a slash
+                if (player.isSprinting() && ticks % 5 == 0) {
+                    areaDamage(player, player.getLocation(), 2.5, 2.0 + ratio * 3.0);
+                }
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // ==================== SUN BREATHING ====================
+    private void sun(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            radiantSolarSpiral(player, ratio);
+        } else if (form == 1) {
+            blazingHorizonBreaker(player, ratio);
+        } else {
+            solarCataclysmCore(player, ratio);
+        }
+    }
+
+    private void radiantSolarSpiral(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1f, 1.5f);
+        new BukkitRunnable() {
+            double angle = 0;
+            int steps = 36;
+            double radius = 2.5 + ratio * 2.0;
+            @Override
+            public void run() {
+                if (angle >= 2 * Math.PI * 3) {
+                    areaDamage(player, player.getLocation(), radius * 1.5, 6.0 + ratio * 8.0);
+                    player.getWorld().spawnParticle(Particle.FLAME, player.getLocation(), 150, radius, 0.5, radius, 0.05);
+                    cancel();
+                    return;
+                }
+                angle += Math.PI / 6;
+                double x = Math.cos(angle) * radius * (1 + angle/10);
+                double z = Math.sin(angle) * radius * (1 + angle/10);
+                Location loc = player.getLocation().clone().add(x, 0.2, z);
+                player.getWorld().spawnParticle(Particle.FLAME, loc, 3, 0.1, 0.1, 0.1, 0.01);
+                player.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
+                radius += 0.05;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void blazingHorizonBreaker(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 1.2f);
+        Vector dir = player.getLocation().getDirection().normalize();
+        double length = 15 + ratio * 12;
+        new BukkitRunnable() {
+            double traveled = 0;
+            Location loc = player.getEyeLocation().clone();
+            @Override
+            public void run() {
+                if (traveled >= length) {
+                    cancel();
+                    return;
+                }
+                traveled += 1.5;
+                loc.add(dir.clone().multiply(1.5));
+                player.getWorld().spawnParticle(Particle.FLAME, loc, 20, 0.8, 0.8, 0.8, 0.02);
+                player.getWorld().spawnParticle(Particle.SMOKE_LARGE, loc, 2, 0.3, 0.3, 0.3, 0);
+                areaDamage(player, loc, 3.0, 5.0 + ratio * 7.0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void solarCataclysmCore(Player player, double ratio) {
+        Location center = player.getLocation();
+        player.getWorld().playSound(center, Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 0.6f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= 40) {
+                    // Explosion
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 5);
+                    player.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.5f);
+                    areaDamage(player, center, 6.0 + ratio * 4, 15.0 + ratio * 20);
+                    setFire(player, center, 5.0, 100);
+                    cancel();
+                    return;
+                }
+                double progress = ticks / 40.0;
+                double radius = progress * (3.0 + ratio * 2.5);
+                player.getWorld().spawnParticle(Particle.FLAME, center, (int)(20 * progress), radius, 0.5, radius, 0);
+                player.getWorld().spawnParticle(Particle.END_ROD, center, 5, radius, 0.5, radius, 0);
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // ==================== WIND BREATHING ====================
+    private void wind(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            cycloneFragmentSlash(player, ratio);
+        } else if (form == 1) {
+            galeRush(player, ratio);
+        } else {
+            tempestCollapse(player, ratio);
+        }
+    }
+
+    private void cycloneFragmentSlash(Player player, double ratio) {
+        int slashes = 5 + (int)(ratio * 5);
+        new BukkitRunnable() {
+            int count = 0;
+            @Override
+            public void run() {
+                if (count++ >= slashes) {
+                    cancel();
+                    return;
+                }
+                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.8f, 1.5f);
+                player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0,1,0), 30, 2, 1, 2, 0.05);
+                // Multi slash in a cone
+                Vector dir = player.getLocation().getDirection();
+                for (int i = -1; i <= 1; i++) {
+                    Vector slashDir = dir.clone().rotateAroundY(i * 0.3);
+                    areaConeDamage(player, player.getLocation(), slashDir, 4.0, 45, 2.5 + ratio * 3.0);
+                }
             }
         }.runTaskTimer(plugin, 0L, 3L);
     }
 
+    private void galeRush(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, 1f, 1.8f);
+        Vector dir = player.getLocation().getDirection().normalize();
+        player.setVelocity(dir.multiply(3.0 + ratio));
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 10 || player.isOnGround()) {
+                    cancel();
+                    return;
+                }
+                player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
+                areaDamage(player, player.getLocation(), 3.0, 3.0 + ratio * 4.0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void tempestCollapse(Player player, double ratio) {
+        Location center = player.getLocation();
+        player.getWorld().playSound(center, Sound.ENTITY_HORSE_BREATHE, 1f, 0.5f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= 30) {
+                    // Burst outward
+                    player.getWorld().spawnParticle(Particle.CLOUD, center, 200, 5, 2, 5, 0.2);
+                    player.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.6f);
+                    areaDamage(player, center, 6.0 + ratio * 4, 8.0 + ratio * 10);
+                    knockbackArea(player, center, 7.0, 2.0);
+                    cancel();
+                    return;
+                }
+                // Pull effect
+                for (Entity e : center.getWorld().getNearbyEntities(center, 6, 3, 6)) {
+                    if (e instanceof LivingEntity le && le != player) {
+                        Vector pull = center.toVector().subtract(le.getLocation().toVector()).normalize().multiply(0.5);
+                        le.setVelocity(pull);
+                    }
+                }
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, center, 50, 4, 1, 4, 0);
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // ==================== MOON BREATHING ====================
+    private void moon(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            crescentPhantomBarrage(player, ratio);
+        } else if (form == 1) {
+            lunarDistortion(player, ratio);
+        } else {
+            eternalNightCollapse(player, ratio);
+        }
+    }
+
+    private void crescentPhantomBarrage(Player player, double ratio) {
+        int blades = 5 + (int)(ratio * 6);
+        new BukkitRunnable() {
+            int count = 0;
+            @Override
+            public void run() {
+                if (count++ >= blades) {
+                    cancel();
+                    return;
+                }
+                // Random direction crescent
+                Vector dir = player.getLocation().getDirection().clone();
+                dir.setX(dir.getX() + random.nextGaussian() * 0.5);
+                dir.setZ(dir.getZ() + random.nextGaussian() * 0.5);
+                dir.normalize();
+                launchMoonBlade(player, dir, ratio);
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void lunarDistortion(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 0.7f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 40) {
+                    cancel();
+                    return;
+                }
+                // Warped space rings
+                player.getWorld().spawnParticle(Particle.DRAGON_BREATH, player.getLocation(), 20, 2, 1, 2, 0.01);
+                player.getWorld().spawnParticle(Particle.ENCHANTMENT_TABLE, player.getLocation().add(0,1,0), 30, 1.5, 1, 1.5, 0);
+                // Distortion damage
+                areaDamage(player, player.getLocation(), 4.0 + ratio * 3, 4.0 + ratio * 5.0);
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void eternalNightCollapse(Player player, double ratio) {
+        Location center = player.getLocation();
+        player.getWorld().playSound(center, Sound.ENTITY_WITHER_SPAWN, 1f, 0.3f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= 30) {
+                    player.getWorld().spawnParticle(Particle.FLASH, center, 5, 2, 2, 2, 0);
+                    areaDamage(player, center, 7.0 + ratio * 5, 12.0 + ratio * 18);
+                    cancel();
+                    return;
+                }
+                double radius = (30 - ticks) * 0.3;
+                player.getWorld().spawnParticle(Particle.SPELL_WITCH, center, 50, radius, 1, radius, 0);
+                player.getWorld().spawnParticle(Particle.SMOKE_LARGE, center, 10, radius/2, 0.5, radius/2, 0);
+                // Pull inward
+                for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius/2, radius)) {
+                    if (e instanceof LivingEntity le && le != player) {
+                        Vector pull = center.toVector().subtract(le.getLocation().toVector()).normalize().multiply(0.3);
+                        le.setVelocity(pull);
+                    }
+                }
+                ticks++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // ==================== FLAME BREATHING ====================
+    private void flame(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            infernalSlash(player, ratio);
+        } else if (form == 1) {
+            ascensionStrike(player, ratio);
+        } else {
+            flameBeastAssault(player, ratio);
+        }
+    }
+
+    private void infernalSlash(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1f, 1f);
+        Vector dir = player.getLocation().getDirection();
+        areaConeDamage(player, player.getLocation(), dir, 5.0, 60, 6.0 + ratio * 8.0);
+        player.getWorld().spawnParticle(Particle.FLAME, player.getLocation().add(dir), 50, 1, 1, 1, 0.05);
+        setFire(player, player.getLocation(), 4.0, 80);
+    }
+
+    private void ascensionStrike(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1f, 0.9f);
+        Location center = player.getLocation();
+        // Upward flame pillar
+        new BukkitRunnable() {
+            double height = 0;
+            @Override
+            public void run() {
+                if (height >= 5 + ratio * 4) {
+                    // Explosion at top
+                    player.getWorld().spawnParticle(Particle.EXPLOSION_LARGE, center.clone().add(0, height, 0), 1);
+                    areaDamage(player, center.clone().add(0, height, 0), 4.0, 7.0 + ratio * 9.0);
+                    cancel();
+                    return;
+                }
+                height += 0.5;
+                Location loc = center.clone().add(0, height, 0);
+                player.getWorld().spawnParticle(Particle.FLAME, loc, 10, 0.5, 0.2, 0.5, 0.02);
+                player.getWorld().spawnParticle(Particle.SMOKE_LARGE, loc, 2, 0.2, 0.1, 0.2, 0);
+                // Launch nearby enemies
+                for (Entity e : center.getWorld().getNearbyEntities(center, 3, height, 3)) {
+                    if (e instanceof LivingEntity le && le != player) {
+                        le.setVelocity(new Vector(0, 0.8 + ratio, 0));
+                        le.setFireTicks(60);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void flameBeastAssault(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BLAZE_AMBIENT, 1f, 0.8f);
+        Vector dir = player.getLocation().getDirection().normalize();
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 15) {
+                    cancel();
+                    return;
+                }
+                player.setVelocity(dir.clone().multiply(1.5));
+                player.getWorld().spawnParticle(Particle.FLAME, player.getLocation(), 30, 1, 1, 1, 0.05);
+                areaDamage(player, player.getLocation(), 3.5, 5.0 + ratio * 7.0);
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    // ==================== MIST BREATHING ====================
+    private void mist(Player player, int form, double ratio, double chargeSeconds) {
+        if (form == 0) {
+            silentDash(player, ratio);
+        } else if (form == 1) {
+            mistMaze(player, ratio);
+        } else {
+            voidExecution(player, ratio);
+        }
+    }
+
+    private void silentDash(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.8f);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 20, 0, false, false));
+        Vector dir = player.getLocation().getDirection().normalize();
+        player.setVelocity(dir.multiply(2.5 + ratio));
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) cancel();
+                player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 5, 0.1, 0.1, 0.1, 0);
+                areaDamage(player, player.getLocation(), 2.5, 4.0 + ratio * 5.0);
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void mistMaze(Player player, double ratio) {
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1f, 0.5f);
+        Location center = player.getLocation();
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ > 60) {
+                    cancel();
+                    return;
+                }
+                player.getWorld().spawnParticle(Particle.CLOUD, center, 50, 4, 1, 4, 0.01);
+                player.getWorld().spawnParticle(Particle.SPELL_MOB, center, 20, 3, 0.5, 3, 0);
+                for (Entity e : center.getWorld().getNearbyEntities(center, 5, 3, 5)) {
+                    if (e instanceof LivingEntity le && le != player) {
+                        le.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
+                        le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1));
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+
+    private void voidExecution(Player player, double ratio) {
+        LivingEntity target = findNearestEnemyInSight(player, 15 + ratio * 10);
+        if (target == null) {
+            silentDash(player, ratio);
+            return;
+        }
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1.2f);
+        player.getWorld().spawnParticle(Particle.SMOKE_LARGE, player.getLocation(), 30, 0.5, 1, 0.5, 0.05);
+        Location behind = target.getLocation().clone().add(target.getLocation().getDirection().multiply(-1.5));
+        behind.setDirection(target.getLocation().getDirection());
+        player.teleport(behind);
+        damageTarget(player, target, 10.0 + ratio * 12.0);
+        player.getWorld().spawnParticle(Particle.SWEEP_ATTACK, behind, 5);
+    }
+
+    // ==================== UTILITY METHODS ====================
+
+    private LivingEntity findNearestEnemyInSight(Player player, double range) {
+        return player.getNearbyEntities(range, range, range).stream()
+                .filter(e -> e instanceof LivingEntity && e != player)
+                .map(e -> (LivingEntity) e)
+                .min(Comparator.comparingDouble(e -> e.getLocation().distanceSquared(player.getLocation())))
+                .orElse(null);
+    }
+
+    private void drawLineParticle(Location from, Location to, Particle particle, int count) {
+        Vector dir = to.clone().subtract(from).toVector();
+        double length = dir.length();
+        dir.normalize();
+        for (int i = 0; i < count; i++) {
+            Location loc = from.clone().add(dir.clone().multiply(i * length / count));
+            from.getWorld().spawnParticle(particle, loc, 1, 0, 0, 0, 0);
+        }
+    }
+
+    private void drawVerticalBeam(Location top, Location bottom, Particle particle) {
+        World world = top.getWorld();
+        double height = top.getY() - bottom.getY();
+        for (double y = 0; y < height; y += 0.5) {
+            Location loc = bottom.clone().add(0, y, 0);
+            world.spawnParticle(particle, loc, 2, 0.3, 0, 0.3, 0);
+        }
+    }
+
+    private void drawDragonSegment(Location loc, Vector direction, double length) {
+        // Simple dragon body with water particles
+        World w = loc.getWorld();
+        w.spawnParticle(Particle.BUBBLE_COLUMN_UP, loc, 10, 0.5, 0.5, 0.5, 0.02);
+        w.spawnParticle(Particle.DRAGON_BREATH, loc, 3, 0.2, 0.2, 0.2, 0);
+    }
+
+    private void launchWaterDragon(Player player, Vector direction, double ratio) {
+        new BukkitRunnable() {
+            double traveled = 0;
+            Location loc = player.getEyeLocation().clone();
+            @Override
+            public void run() {
+                if (traveled > 20 + ratio * 15) {
+                    cancel();
+                    return;
+                }
+                traveled += 1.2;
+                loc.add(direction.clone().multiply(1.2));
+                drawDragonSegment(loc, direction, 2.0);
+                areaDamage(player, loc, 2.5, 4.0 + ratio * 5.0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void launchMoonBlade(Player player, Vector direction, double ratio) {
+        new BukkitRunnable() {
+            double traveled = 0;
+            Location loc = player.getEyeLocation().clone();
+            @Override
+            public void run() {
+                if (traveled > 12 + ratio * 10) {
+                    cancel();
+                    return;
+                }
+                traveled += 1.0;
+                loc.add(direction.clone().multiply(1.0));
+                player.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc, 5, 0.2, 0.2, 0.2, 0.01);
+                player.getWorld().spawnParticle(Particle.CRIT_MAGIC, loc, 2, 0, 0, 0, 0);
+                areaDamage(player, loc, 1.5, 3.0 + ratio * 4.0);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void areaConeDamage(Player source, Location center, Vector direction, double range, double angleDegrees, double damage) {
+        for (Entity e : center.getWorld().getNearbyEntities(center, range, range, range)) {
+            if (!(e instanceof LivingEntity target) || target == source) continue;
+            Vector toTarget = target.getLocation().toVector().subtract(center.toVector());
+            if (toTarget.angle(direction) < Math.toRadians(angleDegrees / 2)) {
+                damageTarget(source, target, damage);
+            }
+        }
+    }
+
     private void areaDamage(Player source, Location center, double radius, double damage) {
-        for (Entity entity : nearbyLiving(source, center, radius)) {
-            if (entity instanceof LivingEntity target) {
+        for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+            if (e instanceof LivingEntity target && target != source) {
                 damageTarget(source, target, damage);
             }
         }
     }
 
     private void setFire(Player source, Location center, double radius, int ticks) {
-        for (Entity entity : nearbyLiving(source, center, radius)) {
-            if (entity instanceof LivingEntity target) {
+        for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+            if (e instanceof LivingEntity target && target != source) {
                 target.setFireTicks(Math.max(target.getFireTicks(), ticks));
             }
         }
     }
 
     private void knockbackArea(Player source, Location center, double radius, double force) {
-        for (Entity entity : nearbyLiving(source, center, radius)) {
-            Vector kb = entity.getLocation().toVector().subtract(center.toVector()).normalize().multiply(force);
-            kb.setY(0.35 + force * 0.15);
-            entity.setVelocity(kb);
-        }
-    }
-
-    private List<Entity> nearbyLiving(Player source, Location center, double radius) {
-        return center.getWorld().getNearbyEntities(center, radius, radius, radius,
-                entity -> entity instanceof LivingEntity && entity != source && !(entity instanceof org.bukkit.entity.ArmorStand)).stream().toList();
-    }
-
-    private LivingEntity nearestEnemy(Player player, double radius) {
-        double best = Double.MAX_VALUE;
-        LivingEntity result = null;
-        for (Entity entity : nearbyLiving(player, player.getLocation(), radius)) {
-            double d = entity.getLocation().distanceSquared(player.getLocation());
-            if (d < best && entity instanceof LivingEntity living) {
-                best = d;
-                result = living;
+        for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+            if (e instanceof LivingEntity target && target != source) {
+                Vector kb = target.getLocation().toVector().subtract(center.toVector()).normalize().multiply(force);
+                kb.setY(0.4);
+                target.setVelocity(kb);
             }
         }
-        return result;
     }
 
     private void damageTarget(Player source, LivingEntity target, double damage) {
