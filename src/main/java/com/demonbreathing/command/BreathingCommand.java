@@ -24,7 +24,13 @@ public final class BreathingCommand implements CommandExecutor, TabCompleter {
         if (!(sender instanceof Player p)) return true;
         if (args.length == 0) return help(p);
 
-        switch (args[0].toLowerCase(Locale.ROOT)) {
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (!sub.equals("withdraw") && !p.hasPermission("demonbreathing.admin")) {
+            p.sendMessage(Component.text("Only /breathing withdraw is available for normal players.", NamedTextColor.RED));
+            return true;
+        }
+
+        switch (sub) {
             case "select" -> {
                 if (args.length < 2) { p.sendMessage(Component.text("/breathing select <type>", NamedTextColor.RED)); return true; }
                 BreathingStyle.parse(args[1]).ifPresentOrElse(style -> {
@@ -71,6 +77,10 @@ public final class BreathingCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean help(Player p) {
+        if (!p.hasPermission("demonbreathing.admin")) {
+            p.sendMessage(Component.text("/breathing withdraw", NamedTextColor.YELLOW));
+            return true;
+        }
         p.sendMessage(Component.text("/breathing select <type>", NamedTextColor.YELLOW));
         p.sendMessage(Component.text("/breathing withdraw", NamedTextColor.YELLOW));
         p.sendMessage(Component.text("/breathing info", NamedTextColor.YELLOW));
@@ -84,7 +94,12 @@ public final class BreathingCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("select", "withdraw", "info", "abilities", "reload", "altar", "katana", "core", "spin"), args[0]);
+        if (args.length == 1) {
+            if (!(sender instanceof Player p) || p.hasPermission("demonbreathing.admin")) {
+                return filter(List.of("select", "withdraw", "info", "abilities", "reload", "altar", "katana", "core", "spin"), args[0]);
+            }
+            return filter(List.of("withdraw"), args[0]);
+        }
         if (args.length == 2 && List.of("select", "katana", "core").contains(args[0].toLowerCase(Locale.ROOT))) {
             return filter(Arrays.stream(BreathingStyle.values()).map(v -> v.name().toLowerCase(Locale.ROOT)).toList(), args[1]);
         }

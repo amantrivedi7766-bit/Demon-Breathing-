@@ -16,14 +16,18 @@ This plugin provides:
 4. If bounty carrier dies, killer receives breathing core directly (no extra bounty on killer).
 
 ## Commands
-- `/breathing info`
-- `/breathing abilities`
-- `/breathing select <style>`
-- `/breathing withdraw`
-- `/breathing altar`
+- `/breathing withdraw` (normal players)
+- `/breathing info` (admin)
+- `/breathing abilities` (admin)
+- `/breathing select <style>` (admin)
+- `/breathing altar` (admin)
 - `/breathing katana <style>` (admin)
 - `/breathing core <style>` (admin)
 - `/breathing spin <player>` (admin)
+
+## Permission Rules
+- Normal players: only `/breathing withdraw`
+- Admins (`demonbreathing.admin`): full command access
 
 ## CustomModelData Map
 ### Breathing Cores

@@ -12,3 +12,5 @@ commands:
 permissions:
   demonbreathing.admin:
     default: op
+  demonbreathing.withdraw:
+    default: true
