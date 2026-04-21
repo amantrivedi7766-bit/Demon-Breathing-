@@ -12,7 +12,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class AbilityExecutor {
     private final DemonBreathingPlugin plugin;
@@ -115,6 +114,7 @@ public final class AbilityExecutor {
         new BukkitRunnable() {
             double traveled = 0;
             Location current = start.clone().add(0, -0.5, 0);
+
             @Override
             public void run() {
                 if (traveled >= length || !player.isOnline()) {
@@ -130,7 +130,7 @@ public final class AbilityExecutor {
                 player.getWorld().spawnParticle(Particle.CRIT, current, 5, 0.5, 0, 0.5, 0);
                 areaDamage(player, current, 2.0, damage * 0.3);
                 for (int i = 0; i < 3; i++) {
-                    Location offset = current.clone().add(random.nextDouble()-0.5, 0, random.nextDouble()-0.5);
+                    Location offset = current.clone().add(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5);
                     player.getWorld().spawnParticle(Particle.PORTAL, offset, 2, 0, 0, 0, 0);
                 }
             }
@@ -146,6 +146,7 @@ public final class AbilityExecutor {
 
         new BukkitRunnable() {
             int tick = 0;
+
             @Override
             public void run() {
                 if (tick == 0) {
@@ -190,7 +191,7 @@ public final class AbilityExecutor {
 
         new BukkitRunnable() {
             double angle = 0;
-            int steps = 20;
+
             @Override
             public void run() {
                 if (angle >= 2 * Math.PI) {
@@ -201,7 +202,7 @@ public final class AbilityExecutor {
                             damageTarget(player, le, damage);
                         }
                     }
-                    player.getWorld().spawnParticle(Particle.WATER_BUBBLE, player.getLocation(), 100, radius/2, 0.5, radius/2, 0.1);
+                    player.getWorld().spawnParticle(Particle.WATER_BUBBLE, player.getLocation(), 100, radius / 2, 0.5, radius / 2, 0.1);
                     cancel();
                     return;
                 }
@@ -226,6 +227,7 @@ public final class AbilityExecutor {
             int ticks = 0;
             Location dragonLoc = player.getEyeLocation().clone();
             Vector direction = player.getLocation().getDirection().normalize();
+
             @Override
             public void run() {
                 if (ticks > 40 || !target.isValid() || !player.isOnline()) {
@@ -250,13 +252,14 @@ public final class AbilityExecutor {
     }
 
     private void endlessCurrentDominion(Player player, double ratio, double chargeSeconds) {
-        int duration = (int)(60 + chargeSeconds * 20 + ratio * 60);
+        int duration = (int) (60 + chargeSeconds * 20 + ratio * 60);
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, duration, 2, false, false, true));
         player.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, duration, 0, false, false));
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, 1f, 1f);
 
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks >= duration || !player.isOnline() || !player.hasPotionEffect(PotionEffectType.SPEED)) {
@@ -289,6 +292,7 @@ public final class AbilityExecutor {
         new BukkitRunnable() {
             double angle = 0;
             double radius = 2.5 + ratio * 2.0;
+
             @Override
             public void run() {
                 if (angle >= 2 * Math.PI * 3) {
@@ -298,8 +302,8 @@ public final class AbilityExecutor {
                     return;
                 }
                 angle += Math.PI / 6;
-                double x = Math.cos(angle) * radius * (1 + angle/10);
-                double z = Math.sin(angle) * radius * (1 + angle/10);
+                double x = Math.cos(angle) * radius * (1 + angle / 10);
+                double z = Math.sin(angle) * radius * (1 + angle / 10);
                 Location loc = player.getLocation().clone().add(x, 0.2, z);
                 player.getWorld().spawnParticle(Particle.FLAME, loc, 3, 0.1, 0.1, 0.1, 0.01);
                 player.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
@@ -315,6 +319,7 @@ public final class AbilityExecutor {
         new BukkitRunnable() {
             double traveled = 0;
             Location loc = player.getEyeLocation().clone();
+
             @Override
             public void run() {
                 if (traveled >= length) {
@@ -335,6 +340,7 @@ public final class AbilityExecutor {
         player.getWorld().playSound(center, Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 0.6f);
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks >= 40) {
@@ -347,14 +353,14 @@ public final class AbilityExecutor {
                 }
                 double progress = ticks / 40.0;
                 double radius = progress * (3.0 + ratio * 2.5);
-                player.getWorld().spawnParticle(Particle.FLAME, center, (int)(20 * progress), radius, 0.5, radius, 0);
+                player.getWorld().spawnParticle(Particle.FLAME, center, (int) (20 * progress), radius, 0.5, radius, 0);
                 player.getWorld().spawnParticle(Particle.END_ROD, center, 5, radius, 0.5, radius, 0);
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    / ==================== WIND BREATHING ====================
+    // ==================== WIND BREATHING ====================
     private void wind(Player player, int form, double ratio, double chargeSeconds) {
         if (form == 0) {
             cycloneFragmentSlash(player, ratio);
@@ -366,9 +372,10 @@ public final class AbilityExecutor {
     }
 
     private void cycloneFragmentSlash(Player player, double ratio) {
-        int slashes = 5 + (int)(ratio * 5);
+        int slashes = 5 + (int) (ratio * 5);
         new BukkitRunnable() {
             int count = 0;
+
             @Override
             public void run() {
                 if (count++ >= slashes) {
@@ -376,7 +383,7 @@ public final class AbilityExecutor {
                     return;
                 }
                 player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.8f, 1.5f);
-                player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0,1,0), 30, 2, 1, 2, 0.05);
+                player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0, 1, 0), 30, 2, 1, 2, 0.05);
                 Vector dir = player.getLocation().getDirection();
                 for (int i = -1; i <= 1; i++) {
                     Vector slashDir = dir.clone().rotateAroundY(i * 0.3);
@@ -392,6 +399,7 @@ public final class AbilityExecutor {
         player.setVelocity(dir.multiply(3.0 + ratio));
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks++ > 10 || player.isOnGround()) {
@@ -409,6 +417,7 @@ public final class AbilityExecutor {
         player.getWorld().playSound(center, Sound.ENTITY_HORSE_BREATHE, 1f, 0.5f);
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks >= 30) {
@@ -443,9 +452,10 @@ public final class AbilityExecutor {
     }
 
     private void crescentPhantomBarrage(Player player, double ratio) {
-        int blades = 5 + (int)(ratio * 6);
+        int blades = 5 + (int) (ratio * 6);
         new BukkitRunnable() {
             int count = 0;
+
             @Override
             public void run() {
                 if (count++ >= blades) {
@@ -465,6 +475,7 @@ public final class AbilityExecutor {
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 0.7f);
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks++ > 40) {
@@ -472,7 +483,7 @@ public final class AbilityExecutor {
                     return;
                 }
                 player.getWorld().spawnParticle(Particle.DRAGON_BREATH, player.getLocation(), 20, 2, 1, 2, 0.01);
-                player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation().add(0,1,0), 30, 1.5, 1, 1.5, 0);
+                player.getWorld().spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1, 0), 30, 1.5, 1, 1.5, 0);
                 areaDamage(player, player.getLocation(), 4.0 + ratio * 3, 4.0 + ratio * 5.0);
             }
         }.runTaskTimer(plugin, 0L, 2L);
@@ -483,6 +494,7 @@ public final class AbilityExecutor {
         player.getWorld().playSound(center, Sound.ENTITY_WITHER_SPAWN, 1f, 0.3f);
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks >= 30) {
@@ -493,8 +505,8 @@ public final class AbilityExecutor {
                 }
                 double radius = (30 - ticks) * 0.3;
                 player.getWorld().spawnParticle(Particle.SPELL, center, 50, radius, 1, radius, 0);
-                player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, center, 10, radius/2, 0.5, radius/2, 0);
-                for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius/2, radius)) {
+                player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, center, 10, radius / 2, 0.5, radius / 2, 0);
+                for (Entity e : center.getWorld().getNearbyEntities(center, radius, radius / 2, radius)) {
                     if (e instanceof LivingEntity le && le != player) {
                         Vector pull = center.toVector().subtract(le.getLocation().toVector()).normalize().multiply(0.3);
                         le.setVelocity(pull);
@@ -529,6 +541,7 @@ public final class AbilityExecutor {
         Location center = player.getLocation();
         new BukkitRunnable() {
             double height = 0;
+
             @Override
             public void run() {
                 if (height >= 5 + ratio * 4) {
@@ -556,6 +569,7 @@ public final class AbilityExecutor {
         Vector dir = player.getLocation().getDirection().normalize();
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks++ > 15) {
@@ -600,6 +614,7 @@ public final class AbilityExecutor {
         Location center = player.getLocation();
         new BukkitRunnable() {
             int ticks = 0;
+
             @Override
             public void run() {
                 if (ticks++ > 60) {
@@ -633,7 +648,7 @@ public final class AbilityExecutor {
         player.getWorld().spawnParticle(Particle.SWEEP_ATTACK, behind, 5);
     }
 
-        // ==================== UTILITY METHODS ====================
+    // ==================== UTILITY METHODS ====================
     private LivingEntity findNearestEnemyInSight(Player player, double range) {
         return player.getNearbyEntities(range, range, range).stream()
                 .filter(e -> e instanceof LivingEntity && e != player)
@@ -671,6 +686,7 @@ public final class AbilityExecutor {
         new BukkitRunnable() {
             double traveled = 0;
             Location loc = player.getEyeLocation().clone();
+
             @Override
             public void run() {
                 if (traveled > 20 + ratio * 15) {
@@ -689,6 +705,7 @@ public final class AbilityExecutor {
         new BukkitRunnable() {
             double traveled = 0;
             Location loc = player.getEyeLocation().clone();
+
             @Override
             public void run() {
                 if (traveled > 12 + ratio * 10) {
